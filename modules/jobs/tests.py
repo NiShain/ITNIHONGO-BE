@@ -104,3 +104,22 @@ class TinTuyenDungViewSetTests(APITestCase):
 
 		self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 		self.assertIn("luong_min", response.data)
+
+	def test_retrieve_job_details_includes_company_and_action_info(self):
+		detail_url = reverse("job-posts-detail", args=[self.open_job.tin_id])
+		self.client.force_authenticate(user=self.company_user)
+
+		response = self.client.get(detail_url)
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		payload = response.data
+		self.assertEqual(payload["tin_id"], self.open_job.tin_id)
+		self.assertEqual(payload["company_name"], self.company_profile.ten_cong_ty)
+		self.assertEqual(payload["posting_title"], self.open_job.tieu_de)
+		self.assertEqual(payload["job_title"], self.open_job.tieu_de)
+		self.assertEqual(payload["location"], self.open_job.dia_diem_lam_viec)
+		self.assertEqual(payload["job_description"], self.open_job.noi_dung)
+		self.assertIsInstance(payload["edit_action"], dict)
+		self.assertTrue(payload["edit_action"]["available"])
+		self.assertIsInstance(payload["delete_action"], dict)
+		self.assertTrue(payload["delete_action"]["available"])

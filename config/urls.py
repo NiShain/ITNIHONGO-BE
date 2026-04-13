@@ -19,12 +19,14 @@ from django.urls import include, path
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from core.views import HealthCheckView
+from modules.accounts.views import TestTokenView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/health/', HealthCheckView.as_view(), name='health-check'),
     path('api/auth/token/', TokenObtainPairView.as_view(), name='token-obtain-pair'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
+    path('api/auth/test-token/', TestTokenView.as_view(), name='test-token'),
     path('api/accounts/', include('modules.accounts.urls')),
     path('api/profiles/', include('modules.profiles.urls')),
     path('api/jobs/', include('modules.jobs.urls')),

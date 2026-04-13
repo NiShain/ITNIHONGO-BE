@@ -139,3 +139,10 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
+
+# Test token endpoint settings (for integration testing without login flow)
+TEST_TOKEN_ENDPOINT_ENABLED = os.getenv("TEST_TOKEN_ENDPOINT_ENABLED", "true").lower() == "true"
+TEST_TOKEN_EMAIL = os.getenv("TEST_TOKEN_EMAIL", "sprint-test@example.com")
+TEST_TOKEN_ROLE = os.getenv("TEST_TOKEN_ROLE", "cong_ty")
+TEST_TOKEN_PASSWORD = os.getenv("TEST_TOKEN_PASSWORD", "test-token-password")
+TEST_TOKEN_SHARED_SECRET = os.getenv("TEST_TOKEN_SHARED_SECRET", "")

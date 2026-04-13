@@ -1,11 +1,22 @@
 from decimal import Decimal, InvalidOperation
 
 from django.db.models import Q
-from rest_framework import permissions, viewsets
+from rest_framework import permissions, status, viewsets
 from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
+from modules.accounts.models import NguoiDung
 from modules.jobs.models import TinTuyenDung
-from modules.jobs.serializers import TinTuyenDungSerializer
+from modules.jobs.serializers import DangTinTuyenDungFormSerializer, TinTuyenDungSerializer
+
+
+class IsCompanyUser(permissions.BasePermission):
+	message = "Chi tai khoan cong ty moi co the dang tin."
+
+	def has_permission(self, request, view):
+		user = request.user
+		return bool(user and user.is_authenticated and getattr(user, "vai_tro", None) == NguoiDung.VaiTro.CONG_TY)
 
 
 class TinTuyenDungViewSet(viewsets.ModelViewSet):
@@ -48,3 +59,27 @@ class TinTuyenDungViewSet(viewsets.ModelViewSet):
 			queryset = queryset.filter(luong_theo_gio__gte=minimum_salary)
 
 		return queryset
+
+
+class DangTinTuyenDungFormView(APIView):
+	permission_classes = [permissions.IsAuthenticated, IsCompanyUser]
+
+	def post(self, request):
+		company_profile = getattr(request.user, "ho_so_cong_ty", None)
+		if company_profile is None:
+			raise ValidationError({"cong_ty": "Tai khoan cong ty chua co ho so cong ty."})
+
+		serializer = DangTinTuyenDungFormSerializer(data=request.data)
+		serializer.is_valid(raise_exception=True)
+
+		payload = dict(serializer.validated_data)
+		payload["cong_ty_id"] = company_profile.cong_ty_id
+		payload["ten_cong_ty_ho_so"] = company_profile.ten_cong_ty
+
+		return Response(
+			{
+				"message": "Da nhan du lieu dang tin.",
+				"data": payload,
+			},
+			status=status.HTTP_201_CREATED,
+		)

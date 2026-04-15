@@ -4,6 +4,17 @@ from modules.jobs.models import TinTuyenDung
 
 
 class TinTuyenDungSerializer(serializers.ModelSerializer):
+    company_name = serializers.CharField(source="cong_ty.ten_cong_ty", read_only=True)
+    posting_title = serializers.CharField(source="tieu_de", read_only=True)
+    job_title = serializers.CharField(source="tieu_de", read_only=True)
+    recruitment_type = serializers.SerializerMethodField()
+    application_deadline = serializers.SerializerMethodField()
+    requirements = serializers.SerializerMethodField()
+    benefits = serializers.SerializerMethodField()
+    edit_action = serializers.SerializerMethodField()
+    delete_action = serializers.SerializerMethodField()
+    job_description = serializers.CharField(source="noi_dung", read_only=True)
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
         raw_data = dict(data)
@@ -25,6 +36,41 @@ class TinTuyenDungSerializer(serializers.ModelSerializer):
         data["raw"] = raw_data
 
         return data
+
+    def get_recruitment_type(self, instance):
+        return getattr(instance, "hinh_thuc_tuyen_dung", None) or "Chưa cập nhật"
+
+    def get_application_deadline(self, instance):
+        deadline = getattr(instance, "ket_thuc_lam", None)
+        if deadline is None:
+            return None
+        return deadline.strftime("%Y-%m-%d %H:%M:%S")
+
+    def get_requirements(self, instance):
+        return getattr(instance, "yeu_cau", None) or "Chưa cập nhật"
+
+    def get_benefits(self, instance):
+        return getattr(instance, "quyen_loi", None) or "Chưa cập nhật"
+
+    def get_edit_action(self, instance):
+        return {
+            "label": "Chỉnh sửa thông tin đăng tuyển",
+            "available": self._can_manage(instance),
+        }
+
+    def get_delete_action(self, instance):
+        return {
+            "label": "Xóa thông tin ứng đăng tuyển",
+            "available": self._can_manage(instance),
+        }
+
+    def _can_manage(self, instance):
+        request = self.context.get("request")
+        if not request or not request.user or not request.user.is_authenticated:
+            return False
+
+        company_user = getattr(getattr(instance, "cong_ty", None), "cong_ty", None)
+        return company_user == request.user
 
     @staticmethod
     def _build_summary(description):

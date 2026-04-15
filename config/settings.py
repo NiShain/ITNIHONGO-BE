@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_spectacular',
     'rest_framework_simplejwt',
     'modules.accounts.apps.AccountsConfig',
     'modules.profiles.apps.ProfilesConfig',
@@ -133,9 +134,36 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'IT-BE API',
+    'DESCRIPTION': 'OpenAPI schema for testing and documenting backend endpoints.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': r'/api',
+    'SECURITY': [{'bearerAuth': []}],
+    'COMPONENTS': {
+        'securitySchemes': {
+            'bearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            }
+        }
+    },
 }
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
 }
+
+# Test token endpoint settings (for integration testing without login flow)
+TEST_TOKEN_ENDPOINT_ENABLED = os.getenv("TEST_TOKEN_ENDPOINT_ENABLED", "true").lower() == "true"
+TEST_TOKEN_EMAIL = os.getenv("TEST_TOKEN_EMAIL", "sprint-test@example.com")
+TEST_TOKEN_ROLE = os.getenv("TEST_TOKEN_ROLE", "cong_ty")
+TEST_TOKEN_PASSWORD = os.getenv("TEST_TOKEN_PASSWORD", "test-token-password")
+TEST_TOKEN_SHARED_SECRET = os.getenv("TEST_TOKEN_SHARED_SECRET", "")

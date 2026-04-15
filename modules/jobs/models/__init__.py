@@ -19,6 +19,9 @@ class TinTuyenDung(models.Model):
 	ket_thuc_lam = models.DateTimeField()
 	luong_theo_gio = models.DecimalField(max_digits=10, decimal_places=2)
 	dia_diem_lam_viec = models.CharField(max_length=255)
+	hinh_thuc_tuyen_dung = models.CharField(max_length=255, null=True, blank=True)
+	yeu_cau = models.TextField(null=True, blank=True)
+	quyen_loi = models.TextField(null=True, blank=True)
 	trang_thai = models.CharField(max_length=20, choices=TrangThai.choices, default=TrangThai.DANG_MO)
 	tao_luc = models.DateTimeField(auto_now_add=True)
 

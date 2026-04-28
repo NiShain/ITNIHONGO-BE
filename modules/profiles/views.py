@@ -1,7 +1,9 @@
 from pathlib import Path
 from uuid import uuid4
+from datetime import datetime
 
 from django.core.files.storage import default_storage
+from django.http import FileResponse
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound, PermissionDenied
@@ -14,6 +16,8 @@ from modules.accounts.models import NguoiDung
 from modules.profiles.models import HoSoCongTy, HoSoUngVien
 from modules.profiles.serializers import HoSoCongTySerializer, HoSoUngVienSerializer
 from modules.profiles.permissions import IsCandidateSelf, IsEmployerOrCandidateSelf
+from modules.profiles.pdf_generator import generate_cv_pdf
+from modules.profiles.cv_templates import get_template_class
 
 
 MAX_AVATAR_SIZE = 2 * 1024 * 1024
@@ -109,7 +113,7 @@ class HoSoUngVienViewSet(viewsets.ModelViewSet):
 		"""
 		if self.action in ["retrieve"]:
 			self.permission_classes = [IsAuthenticated, IsEmployerOrCandidateSelf]
-		elif self.action in ["update", "partial_update", "destroy", "me"]:
+		elif self.action in ["update", "partial_update", "destroy", "me", "download_cv"]:
 			self.permission_classes = [IsAuthenticated, IsCandidateSelf]
 		elif self.action in ["upload_avatar"]:
 			self.permission_classes = [IsAuthenticated]
@@ -194,6 +198,50 @@ class HoSoUngVienViewSet(viewsets.ModelViewSet):
 		profile.save(update_fields=["avatar", "updated_at"])
 
 		return Response({"avatar_url": avatar_url}, status=status.HTTP_200_OK)
+
+	@extend_schema(
+		summary='Download candidate CV as PDF',
+		description='Download candidate profile as PDF file. Only candidate can download their own CV. Supports multiple templates and export formats (Phase 2).',
+		tags=['profiles'],
+		parameters=[
+			{
+				'name': 'template',
+				'in': 'query',
+				'description': 'CV template style: professional (default), modern, minimal',
+				'schema': {'type': 'string', 'enum': ['professional', 'modern', 'minimal']},
+			},
+		],
+		responses={200: OpenApiResponse(description='PDF file download')},
+	)
+	@action(detail=False, methods=["get"], url_path="download-cv")
+	def download_cv(self, request):
+		"""Download candidate CV as PDF with optional template selection."""
+		if request.user.vai_tro != NguoiDung.VaiTro.UNG_VIEN:
+			raise PermissionDenied("Chỉ ứng viên mới có thể tải CV.")
+
+		try:
+			profile = HoSoUngVien.objects.select_related("ung_vien").get(ung_vien=request.user)
+		except HoSoUngVien.DoesNotExist as exc:
+			raise NotFound("Không tìm thấy hồ sơ ứng viên của bạn.") from exc
+
+		try:
+			# Phase 2: Support template selection
+			template_name = request.query_params.get('template', 'professional')
+			template_class = get_template_class(template_name)
+			
+			# Generate PDF using selected template
+			filename = f"CV_{profile.ho_ten or 'CV'}_{datetime.now().strftime('%d%m%Y')}.pdf"
+			generator = template_class(profile, filename)
+			pdf_buffer = generator.generate()
+			
+			response = FileResponse(pdf_buffer, content_type='application/pdf')
+			response['Content-Disposition'] = f'attachment; filename="{filename}"'
+			return response
+		except Exception as e:
+			return Response(
+				{"detail": f"Lỗi tạo CV: {str(e)}"},
+				status=status.HTTP_500_INTERNAL_SERVER_ERROR
+			)
 
 
 @extend_schema_view(
